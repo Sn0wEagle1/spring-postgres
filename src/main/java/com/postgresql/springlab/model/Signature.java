@@ -9,7 +9,8 @@ import java.util.UUID;
 public class Signature {
 
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "signature_id")
     private UUID id;
 
     @Column(nullable = false)

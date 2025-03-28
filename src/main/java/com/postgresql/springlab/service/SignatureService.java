@@ -20,6 +20,16 @@ public class SignatureService {
         this.cryptoService = cryptoService;
     }
 
+    // Метод для поиска сигнатуры по ID
+    public Optional<Signature> findById(UUID id) {
+        return signatureRepository.findById(id);
+    }
+
+    // Метод для сохранения сигнатуры
+    public Signature save(Signature signature) {
+        return signatureRepository.save(signature);
+    }
+
     public Signature createSignature(Signature signature) throws Exception {
         signature.setUpdatedAt(LocalDateTime.now());
         String dataToSign = signature.getThreatName() + signature.getRemainderHash();
@@ -53,5 +63,4 @@ public class SignatureService {
             signatureRepository.save(signature);
         });
     }
-
 }
