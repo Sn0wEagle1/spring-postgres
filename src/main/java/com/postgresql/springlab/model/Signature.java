@@ -1,70 +1,97 @@
 package com.postgresql.springlab.model;
 
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "signatures")
 public class Signature {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue
+    private UUID id;
 
-    private String objectName;
-    private byte[] first8Bytes;
-    private String hashTail;
-    private int tailLength;
+    @Column(nullable = false)
+    private String threatName;
+
+    @Column(nullable = false, length = 8)
+    private byte[] firstBytes;
+
+    @Lob
+    private byte[] remainderBytes;
+
+    @Column(nullable = false)
+    private String remainderHash;
+
+    @Column(nullable = false)
+    private int remainderLength;
+
+    @Column(nullable = false)
     private String fileType;
-    private int startOffset;
-    private int endOffset;
 
-    public Signature() {
-    }
+    @Column(nullable = false)
+    private int offsetStart;
 
-    public Signature(String objectName, byte[] first8Bytes, String hashTail, int tailLength, String fileType, int startOffset, int endOffset) {
-        this.objectName = objectName;
-        this.first8Bytes = first8Bytes;
-        this.hashTail = hashTail;
-        this.tailLength = tailLength;
-        this.fileType = fileType;
-        this.startOffset = startOffset;
-        this.endOffset = endOffset;
-    }
+    @Column(nullable = false)
+    private int offsetEnd;
 
-    public Long getId() {
+    @Lob
+    private byte[] digitalSignature;
+
+    @Column(nullable = false)
+    private LocalDateTime updatedAt;
+
+    @Column(nullable = false)
+    private String status; // ACTUAL, DELETED, CORRUPTED
+
+    // Геттеры и сеттеры
+    public UUID getId() {
         return id;
     }
 
-    public String getObjectName() {
-        return objectName;
+    public void setId(UUID id) {
+        this.id = id;
     }
 
-    public void setObjectName(String objectName) {
-        this.objectName = objectName;
+    public String getThreatName() {
+        return threatName;
     }
 
-    public byte[] getFirst8Bytes() {
-        return first8Bytes;
+    public void setThreatName(String threatName) {
+        this.threatName = threatName;
     }
 
-    public void setFirst8Bytes(byte[] first8Bytes) {
-        this.first8Bytes = first8Bytes;
+    public byte[] getRemainderBytes() {
+        return remainderBytes;
     }
 
-    public String getHashTail() {
-        return hashTail;
+    public void setRemainderBytes(byte[] remainderBytes) {
+        this.remainderBytes = remainderBytes;
     }
 
-    public void setHashTail(String hashTail) {
-        this.hashTail = hashTail;
+    public byte[] getFirstBytes() {
+        return firstBytes;
     }
 
-    public int getTailLength() {
-        return tailLength;
+    public void setFirstBytes(byte[] firstBytes) {
+        this.firstBytes = firstBytes;
     }
 
-    public void setTailLength(int tailLength) {
-        this.tailLength = tailLength;
+    public String getRemainderHash() {
+        return remainderHash;
+    }
+
+    public void setRemainderHash(String remainderHash) {
+        this.remainderHash = remainderHash;
+    }
+
+    public int getRemainderLength() {
+        return remainderLength;
+    }
+
+    public void setRemainderLength(int remainderLength) {
+        this.remainderLength = remainderLength;
     }
 
     public String getFileType() {
@@ -75,19 +102,44 @@ public class Signature {
         this.fileType = fileType;
     }
 
-    public int getStartOffset() {
-        return startOffset;
+    public int getOffsetStart() {
+        return offsetStart;
     }
 
-    public void setStartOffset(int startOffset) {
-        this.startOffset = startOffset;
+    public void setOffsetStart(int offsetStart) {
+        this.offsetStart = offsetStart;
     }
 
-    public int getEndOffset() {
-        return endOffset;
+    public int getOffsetEnd() {
+        return offsetEnd;
     }
 
-    public void setEndOffset(int endOffset) {
-        this.endOffset = endOffset;
+    public void setOffsetEnd(int offsetEnd) {
+        this.offsetEnd = offsetEnd;
+    }
+
+    public byte[] getDigitalSignature() {
+        return digitalSignature;
+    }
+
+    public void setDigitalSignature(byte[] digitalSignature) {
+        this.digitalSignature = digitalSignature;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 }
+
