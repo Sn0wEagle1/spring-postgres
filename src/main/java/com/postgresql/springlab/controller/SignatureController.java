@@ -1,6 +1,5 @@
 package com.postgresql.springlab.controller;
 
-import com.postgresql.springlab.model.History;
 import com.postgresql.springlab.model.Signature;
 import com.postgresql.springlab.service.SignatureService;
 import com.postgresql.springlab.service.CryptoService;
@@ -20,7 +19,7 @@ import java.util.UUID;
 public class SignatureController {
 
     private final SignatureService signatureService;
-    private final CryptoService cryptoService;  // Добавляем зависимость
+    private final CryptoService cryptoService;
     private final SignatureRepository signatureRepository;
     private final VersioningService versioningService;
 
@@ -31,57 +30,94 @@ public class SignatureController {
         this.versioningService = versioningService;
     }
 
+    // Создание сигнатуры (только для администратора)
     @PostMapping
-    public ResponseEntity<Signature> createSignature(@RequestBody Signature signature) {
+    public ResponseEntity<Signature> createSignature(@RequestBody Signature signature, @RequestHeader("role") String role, @RequestHeader("username") String username) {
+        if (role == null || !role.equals("ADMIN")) {
+            return ResponseEntity.status(403).body(null); // 403 Forbidden для не-администраторов
+        }
+
         try {
-            // Если статус не задан, устанавливаем его в "ACTIVE"
             if (signature.getStatus() == null || signature.getStatus().isEmpty()) {
                 signature.setStatus("ACTIVE");
             }
-            return ResponseEntity.ok(signatureService.createSignature(signature));
+            Signature createdSignature = signatureService.createSignature(signature);
+            versioningService.saveVersion(createdSignature, "CREATED", username, "{}");  // Логируем действие с пустыми изменениями для новой записи
+            return ResponseEntity.ok(createdSignature);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
         }
     }
 
-
+    // Получение сигнатуры по ID (для всех пользователей)
     @GetMapping("/{id}")
-    public ResponseEntity<Signature> getSignature(@PathVariable UUID id) {
-        Optional<Signature> optionalSignature = signatureService.getSignature(id);  // Получаем сигнатуру по ID
+    public ResponseEntity<Signature> getSignature(@PathVariable UUID id,
+                                                  @RequestHeader("username") String username,
+                                                  @RequestHeader("role") String role) {
+
+        if (role == null || username == null) {
+            return ResponseEntity.badRequest().body(null);  // Если не переданы username или role
+        }
+
+        Optional<Signature> optionalSignature = signatureService.getSignature(id);
         if (optionalSignature.isEmpty()) {
             return ResponseEntity.notFound().build();  // Если сигнатуры нет, возвращаем 404
         }
 
-        Signature signature = optionalSignature.get();  // Получаем сам объект сигнатуры
-
         // Логика проверки подписи
         try {
-            String data = signature.getThreatName() + signature.getRemainderHash();
-            boolean isValid = cryptoService.verifySignature(data, signature.getDigitalSignature());  // Проверка подписи
-            // Если нужно, можно логировать или что-то с этим делать, но мы не добавляем в саму сигнатуру
+            String data = optionalSignature.get().getThreatName() + optionalSignature.get().getRemainderHash();
+            boolean isValid = cryptoService.verifySignature(data, optionalSignature.get().getDigitalSignature());
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().build();  // Ошибка при проверке подписи
+            return ResponseEntity.internalServerError().build();
         }
 
-        return ResponseEntity.ok(signature);  // Возвращаем саму сигнатуру с её данными
+        return ResponseEntity.ok(optionalSignature.get());  // Возвращаем саму сигнатуру с её данными
     }
 
+    // Получение всех сигнатур (для всех пользователей, но с разными правами)
     @Transactional
     @GetMapping
-    public List<Signature> getSignatures(@RequestParam(required = false) LocalDateTime since) {
-        if (since == null) {
-            // Возвращаем все активные записи
-            return signatureRepository.findAllActive();
-        } else {
-            // Фильтруем по дате обновления и статусу не DELETED
-            return signatureRepository.findByUpdatedAtAfterAndActiveStatus(since);
+    public ResponseEntity<List<Signature>> getSignatures(@RequestParam(required = false) LocalDateTime since,
+                                                         @RequestParam(required = false) String status,
+                                                         @RequestHeader("role") String role) {
+
+        if (role == null) {
+            return ResponseEntity.badRequest().build();  // Если не передана роль
         }
+
+        List<Signature> result;
+
+        // Если роль администратора — можно просматривать все записи
+        if (role.equals("ADMIN")) {
+            if (since != null && status != null) {
+                result = signatureRepository.findByUpdatedAtAfterAndStatusIgnoreCase(since, status);
+            } else if (since != null) {
+                result = signatureRepository.findByUpdatedAtAfterAndActiveStatus(since);
+            } else if (status != null) {
+                result = signatureRepository.findByStatusIgnoreCase(status);
+            } else {
+                result = signatureRepository.findAllActive();
+            }
+        } else {
+            // Для остальных ролей доступны только активные записи
+            result = signatureRepository.findAllActive();
+        }
+
+        return ResponseEntity.ok(result);
     }
 
-
-    // Обновление сигнатуры
+    // Обновление сигнатуры (только для администратора)
     @PutMapping("/{id}")
-    public ResponseEntity<Signature> updateSignature(@PathVariable("id") UUID id, @RequestBody Signature updatedSignature) {
+    public ResponseEntity<Signature> updateSignature(@PathVariable("id") UUID id,
+                                                     @RequestBody Signature updatedSignature,
+                                                     @RequestHeader("role") String role,
+                                                     @RequestHeader("username") String username) {
+
+        if (role == null || !role.equals("ADMIN")) {
+            return ResponseEntity.status(403).body(null); // 403 Forbidden для не-администраторов
+        }
+
         Signature existingSignature = signatureRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Signature not found"));
 
@@ -128,15 +164,21 @@ public class SignatureController {
         signatureRepository.save(existingSignature);
 
         // Вызываем сервис для сохранения истории и аудита
-        versioningService.saveVersion(existingSignature, "UPDATED", "admin", fieldsChanged.toString());
+        versioningService.saveVersion(existingSignature, "UPDATED", username, fieldsChanged.toString());
 
         return ResponseEntity.ok(existingSignature);
     }
 
-
-    // Удаление сигнатуры
+    // Удаление сигнатуры (только для администраторов)
     @DeleteMapping("/{id}")
-    public ResponseEntity<String> deleteSignature(@PathVariable UUID id, @RequestParam String changedBy) {
+    public ResponseEntity<String> deleteSignature(@PathVariable UUID id,
+                                                  @RequestHeader("role") String role,
+                                                  @RequestHeader("username") String username) {
+
+        if (role == null || !role.equals("ADMIN")) {
+            return ResponseEntity.status(403).body("Forbidden: Only admins can delete signatures.");
+        }
+
         Optional<Signature> signatureOptional = signatureService.findById(id);
 
         if (!signatureOptional.isPresent()) {
@@ -144,19 +186,14 @@ public class SignatureController {
         }
 
         Signature signature = signatureOptional.get();
-
-        // Обновляем статус на "DELETED"
         signature.setStatus("DELETED");
-
-        // Сохраняем обновленную сигнатуру
         signatureService.save(signature);
 
-        // Добавляем запись в историю и аудит
-        versioningService.saveVersion(signature, "DELETE", changedBy);
+        // Логируем удаление в аудит
+        versioningService.saveVersion(signature, "DELETED", username, "{}");  // Логируем удаление
 
         return ResponseEntity.ok("Signature deleted and status updated to DELETED");
     }
-
 
     @ControllerAdvice
     public static class GlobalExceptionHandler {

@@ -19,4 +19,8 @@ public interface SignatureRepository extends JpaRepository<Signature, UUID> {
     // Метод для поиска записей, обновленных после указанной даты, и со статусом не DELETED
     @Query("SELECT s FROM Signature s WHERE s.updatedAt > :since")
     List<Signature> findByUpdatedAtAfterAndActiveStatus(LocalDateTime since);
+
+    List<Signature> findByStatusIgnoreCase(String status);
+    List<Signature> findByUpdatedAtAfterAndStatusIgnoreCase(LocalDateTime updatedAt, String status);
+
 }
