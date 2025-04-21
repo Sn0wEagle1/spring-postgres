@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -95,5 +96,7 @@ public class VersioningService {
         auditRepository.save(audit);
     }
 
-
+    public List<Audit> getAllAuditEntries() {
+        return auditRepository.findAll();
+    }
 }
