@@ -1,5 +1,6 @@
 package com.postgresql.springlab.controller;
 
+import com.postgresql.springlab.model.Audit;
 import com.postgresql.springlab.model.Signature;
 import com.postgresql.springlab.service.SignatureService;
 import com.postgresql.springlab.service.CryptoService;
@@ -48,6 +49,7 @@ public class SignatureController {
             return ResponseEntity.internalServerError().build();
         }
     }
+
 
     // Получение сигнатуры по ID (для всех пользователей)
     @GetMapping("/{id}")
@@ -107,6 +109,18 @@ public class SignatureController {
         return ResponseEntity.ok(result);
     }
 
+    @GetMapping("/audit")
+    public ResponseEntity<List<Audit>> getAllAudit(@RequestHeader("role") String role) {
+        if (role == null || (!role.equals("ADMIN"))) {
+            return ResponseEntity.status(403).build(); // Только админы и аналитики
+        }
+
+        List<Audit> allAudits = versioningService.getAllAuditEntries();
+        return ResponseEntity.ok(allAudits);
+    }
+
+
+
     // Обновление сигнатуры (только для администратора)
     @PutMapping("/{id}")
     public ResponseEntity<Signature> updateSignature(@PathVariable("id") UUID id,
@@ -158,6 +172,14 @@ public class SignatureController {
         // Проверяем, были ли изменения
         if (fieldsChanged.length() == 2) { // "{}" означает, что изменений нет
             return ResponseEntity.ok(existingSignature);
+        }
+
+        try {
+            String data = existingSignature.getThreatName() + existingSignature.getRemainderHash();
+            byte[] newSignature = cryptoService.signData(data);
+            existingSignature.setDigitalSignature(newSignature);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(null);
         }
 
         // Обновляем данные в репозитории
