@@ -103,7 +103,7 @@ public class Signature {
         this.fileType = fileType;
     }
 
-    public int getOffsetStart() {
+    public Integer getOffsetStart() {
         return offsetStart;
     }
 
@@ -111,7 +111,7 @@ public class Signature {
         this.offsetStart = offsetStart;
     }
 
-    public int getOffsetEnd() {
+    public Integer getOffsetEnd() {
         return offsetEnd;
     }
 
