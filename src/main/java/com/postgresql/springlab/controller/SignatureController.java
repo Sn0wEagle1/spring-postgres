@@ -40,7 +40,7 @@ public class SignatureController {
 
         try {
             if (signature.getStatus() == null || signature.getStatus().isEmpty()) {
-                signature.setStatus("ACTIVE");
+                signature.setStatus("ACTUAL");
             }
             Signature createdSignature = signatureService.createSignature(signature);
             versioningService.saveVersion(createdSignature, "CREATED", username, "{}");  // Логируем действие с пустыми изменениями для новой записи
