@@ -59,7 +59,7 @@ public class ScanService {
 
         // Загрузка активных сигнатур
         List<Signature> signatures = signatureRepository.findAll().stream()
-                .filter(s -> "ACTIVE".equalsIgnoreCase(s.getStatus()))
+                .filter(s -> "ACTUAL".equalsIgnoreCase(s.getStatus()))
                 .toList();
         logger.info("Loaded {} active signatures from the database", signatures.size());
 
